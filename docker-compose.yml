@@ -1,0 +1,116 @@
+# ============================================================================
+# === config shared between all airflow services =============================
+# ============================================================================
+x-airflow-common:
+  &airflow-common
+  build: ./airflow
+  environment:
+    &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow  # TODO: rm this bc it is deprecated
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres/airflow
+    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__CORE__PARALLELISM: '1'
+    UPLOADER_HOSTNAME: http://35.209.104.85:5000
+    SQLALCHEMY_WARN_20: 0  # set to 1 verbose logging about sqlAlchemy deprecations
+    AIRFLOW__LOGGING__LOGGING_LEVEL: INFO  # DEBUG
+    AIRFLOW_HOME: /opt/airflow/
+#    env_file:
+#        - .env
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/logs:/opt/airflow/logs
+    - ./airflow/plugins:/opt/airflow/plugins
+#     - /srv/imars-objects:/srv/imars-objects:ro,slave
+#     - ./airflow/requirements.txt:/requirements.txt
+  user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}"  # user & group ID in airflow containers
+  depends_on:
+    redis:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+# ============================================================================
+
+# ==========================================================================
+# ==========================================================================
+# === airflow job orchestration services
+# ==========================================================================
+postgres:
+  image: postgres:13
+  environment:
+    POSTGRES_USER: airflow
+    POSTGRES_PASSWORD: airflow  # ${POSTGRES_PASSWORD}
+    POSTGRES_DB: airflow
+  volumes:
+    - postgres-db-volume:/var/lib/postgresql/data
+  healthcheck:
+    test: ["CMD", "pg_isready", "-U", "airflow"]
+    interval: 5s
+    retries: 5
+  restart: always
+
+redis:
+  image: redis:latest
+  expose:
+    - 6379:6379
+  healthcheck:
+    test: ["CMD", "redis-cli", "ping"]
+    interval: 5s
+    timeout: 30s
+    retries: 50
+  restart: always
+
+airflow-webserver:
+  <<: *airflow-common
+  command: webserver
+  ports:
+    - 8888:8080
+  healthcheck:
+    test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+    interval: 10s
+    timeout: 10s
+    retries: 5
+  restart: always
+  # container_name: airflow_webserver
+  # mem_limit: 2048m
+
+airflow-scheduler:
+  <<: *airflow-common
+  command: scheduler
+  restart: always
+
+airflow-worker:
+  <<: *airflow-common
+  command: celery worker
+  restart: always
+
+airflow-init:
+  <<: *airflow-common
+  command: version
+  environment:
+    <<: *airflow-common-env
+    _AIRFLOW_DB_UPGRADE: 'true'
+    _AIRFLOW_WWW_USER_CREATE: 'true'
+    _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}  # un for admin login
+    _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}  # pw for admin login
+
+flower:
+  <<: *airflow-common
+  command: celery flower
+  ports:
+    - 5555:5555
+  healthcheck:
+    test: ["CMD", "curl", "--fail", "http://localhost:5555/"]
+    interval: 10s
+    timeout: 10s
+    retries: 5
+  restart: always
+
+# ==========================================================================
+
+volumes:
+  postgres-db-volume:
