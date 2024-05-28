@@ -8,7 +8,7 @@ from airflow.operators.bash_operator import BashOperator
 from datetime import datetime
 
 with DAG(
-    'ts_ingest',
+    'homes_backup',
     catchup=False,  # latest only
     schedule_interval="0 6 * * 6",  # 6am every Sat
     max_active_runs=1,
