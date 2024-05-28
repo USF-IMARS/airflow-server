@@ -33,82 +33,81 @@ x-airflow-common:
       condition: service_healthy
     postgres:
       condition: service_healthy
-# ============================================================================
-
 # ==========================================================================
-# ==========================================================================
-# === airflow job orchestration services
-# ==========================================================================
-postgres:
-  image: postgres:13
-  environment:
-    POSTGRES_USER: airflow
-    POSTGRES_PASSWORD: airflow  # ${POSTGRES_PASSWORD}
-    POSTGRES_DB: airflow
-  volumes:
-    - postgres-db-volume:/var/lib/postgresql/data
-  healthcheck:
-    test: ["CMD", "pg_isready", "-U", "airflow"]
-    interval: 5s
-    retries: 5
-  restart: always
-
-redis:
-  image: redis:latest
-  expose:
-    - 6379:6379
-  healthcheck:
-    test: ["CMD", "redis-cli", "ping"]
-    interval: 5s
-    timeout: 30s
-    retries: 50
-  restart: always
-
-airflow-webserver:
-  <<: *airflow-common
-  command: webserver
-  ports:
-    - 8888:8080
-  healthcheck:
-    test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
-    interval: 10s
-    timeout: 10s
-    retries: 5
-  restart: always
-  # container_name: airflow_webserver
-  # mem_limit: 2048m
-
-airflow-scheduler:
-  <<: *airflow-common
-  command: scheduler
-  restart: always
-
-airflow-worker:
-  <<: *airflow-common
-  command: celery worker
-  restart: always
-
-airflow-init:
-  <<: *airflow-common
-  command: version
-  environment:
-    <<: *airflow-common-env
-    _AIRFLOW_DB_UPGRADE: 'true'
-    _AIRFLOW_WWW_USER_CREATE: 'true'
-    _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}  # un for admin login
-    _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}  # pw for admin login
-
-flower:
-  <<: *airflow-common
-  command: celery flower
-  ports:
-    - 5555:5555
-  healthcheck:
-    test: ["CMD", "curl", "--fail", "http://localhost:5555/"]
-    interval: 10s
-    timeout: 10s
-    retries: 5
-  restart: always
+services:
+  # ==========================================================================
+  # === airflow job orchestration services
+  # ==========================================================================
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow  # ${POSTGRES_PASSWORD}
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 5s
+      retries: 5
+    restart: always
+  
+  redis:
+    image: redis:latest
+    expose:
+      - 6379:6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 30s
+      retries: 50
+    restart: always
+  
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - 8888:8080
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
+    # container_name: airflow_webserver
+    # mem_limit: 2048m
+  
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    restart: always
+  
+  airflow-worker:
+    <<: *airflow-common
+    command: celery worker
+    restart: always
+  
+  airflow-init:
+    <<: *airflow-common
+    command: version
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_UPGRADE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-airflow}  # un for admin login
+      _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-airflow}  # pw for admin login
+  
+  flower:
+    <<: *airflow-common
+    command: celery flower
+    ports:
+      - 5555:5555
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:5555/"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    restart: always
 
 # ==========================================================================
 
