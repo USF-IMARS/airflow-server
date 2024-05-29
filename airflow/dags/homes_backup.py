@@ -19,7 +19,7 @@ with DAG(
     BashOperator(
         task_id="homes_backup_to_pgs",
         bash_command=(
-            "rsync -habuP /srv/imars-objects/homes/ /srv/imars-objects/tpa_pgs/yin/homes/"
+            "rsync -habuP /srv/yin/homes/ /srv/pgs/yin/homes/"
         )
     )
     # TODO: add another BashOperator for secondary backup

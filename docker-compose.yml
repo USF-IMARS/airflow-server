@@ -84,7 +84,11 @@ services:
     <<: *airflow-common
     command: celery worker
     restart: always
-  
+    volumes:
+      - type: volume
+        source: tpa_pgs
+        target: /srv/pgs
+
   airflow-init:
     <<: *airflow-common
     command: version
@@ -111,3 +115,9 @@ services:
 
 volumes:
   postgres-db-volume:
+  tpa_pgs:
+    driver: local
+    driver_opts:
+      type: "nfs4"
+      o: "rw,addr=131.247.188.131"
+      device: ":/data/tylarmurray"
