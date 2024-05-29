@@ -33,14 +33,6 @@ x-airflow-common:
       condition: service_healthy
 # ==========================================================================
 services:
-  nginx:
-    container_name: nginx
-    build: ./nginx
-    restart: unless-stopped
-    ports:
-      - 80:80
-    volumes:
-      - ./static_files:/usr/share/nginx/html:ro
   # ==========================================================================
   # === airflow job orchestration services
   # ==========================================================================
