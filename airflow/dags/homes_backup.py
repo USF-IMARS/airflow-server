@@ -17,7 +17,7 @@ with DAG(
     },
 ) as dag:
     BashOperator(
-        task_id="homes_backup_to_pgs,
+        task_id="homes_backup_to_pgs",
         bash_command=(
             "rsync -habuP /srv/imars-objects/homes/ /srv/imars-objects/tpa_pgs/yin/homes/"
         )
