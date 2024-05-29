@@ -88,6 +88,9 @@ services:
       - type: volume
         source: tpa_pgs
         target: /srv/pgs
+      - type: volume
+        source: yin
+        target: /srv/yin
 
   airflow-init:
     <<: *airflow-common
@@ -121,3 +124,9 @@ volumes:
       type: "nfs4"
       o: "rw,addr=131.247.188.131"
       device: ":/data/tylarmurray"
+  yin:
+    driver: local
+    driver_opts:
+      type: "nfs4"
+      o: "rw,addr=192.168.1.203"
+      device: ":/yin/homes"
