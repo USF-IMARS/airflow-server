@@ -1,1 +1,2 @@
+copernicus_to_erddap @ git+https://github.com/USF-IMARS/Copernicus2ERDDAP.git#branch=main
 

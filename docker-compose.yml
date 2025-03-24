@@ -24,6 +24,7 @@ x-airflow-common:
     - ./airflow/dags:/opt/airflow/dags
     - ./airflow/logs:/opt/airflow/logs
     - ./airflow/plugins:/opt/airflow/plugins
+    - airflow-logs-volume:/opt/airflow/logs
 #     - ./airflow/requirements.txt:/requirements.txt
   user: "${AIRFLOW_UID:-50000}:${AIRFLOW_GID:-0}"  # user & group ID in airflow containers
   depends_on:
@@ -117,6 +118,7 @@ services:
 # ==========================================================================
 
 volumes:
+  airflow-logs-volume:
   postgres-db-volume:
   tpa_pgs:
     driver: local
