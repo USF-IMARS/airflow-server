@@ -92,7 +92,12 @@ services:
       - type: volume
         source: yin
         target: /srv/yin
-
+      # Re-include the common volumes
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./airflow/plugins:/opt/airflow/plugins
+      - airflow-logs-volume:/opt/airflow/logs
+    
   airflow-init:
     <<: *airflow-common
     command: version
