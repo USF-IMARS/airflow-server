@@ -4,9 +4,11 @@ Example Airflow DAG to demonstrate calling download_granule.py
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.exceptions import AirflowSkipException
 
 # Import the function from our script
-from copernicus_to_erddap import download_granule
+from copernicus_to_erddap.download_granule import get_granule
+from openeo.rest import OpenEoApiError  # Import the specific exception
 
 default_args = {
     'owner': 'airflow',
@@ -28,7 +30,8 @@ dag = DAG(
 
 def dl_granule(**kwargs):
     """
-    Task to download Sentinel-2 granule for a specific date
+    Task to download Sentinel-2 granule for a specific date.
+    If no data is available (as indicated by an OpenEoApiError), skip the task.
     """
     # Get execution date from Airflow context
     execution_date = kwargs.get('execution_date')
@@ -36,8 +39,17 @@ def dl_granule(**kwargs):
     # Format date for our function
     formatted_date = execution_date.strftime('%Y-%m-%d')
     
-    # Call our function with the date
-    output_file = download_granule(formatted_date)
+    try:
+        # Call our function with the date
+        output_file = get_granule(formatted_date)
+    except OpenEoApiError as e:
+        # Check if the error message indicates that no data is available
+        if "NoDataAvailable" in str(e):
+            raise AirflowSkipException(
+                f"Skipping download for {formatted_date}: {e}"
+            )
+        else:
+            raise
     
     return f"Successfully downloaded granule to {output_file}"
 
