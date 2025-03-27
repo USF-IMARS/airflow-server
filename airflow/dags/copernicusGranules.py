@@ -7,7 +7,7 @@ from airflow.operators.python import PythonOperator
 from airflow.exceptions import AirflowSkipException
 
 # Import the function from our script
-from copernicus_to_erddap.download_granule import get_granule
+from copernicus_to_erddap.download_granule import download_granule
 from openeo.rest import OpenEoApiError  # Import the specific exception
 
 default_args = {
@@ -41,7 +41,7 @@ def dl_granule(**kwargs):
     
     try:
         # Call our function with the date
-        output_file = get_granule(formatted_date)
+        output_file = download_granule('/srv/pgs/copernicus_to_erddap', formatted_date)
     except OpenEoApiError as e:
         # Check if the error message indicates that no data is available
         if "NoDataAvailable" in str(e):
