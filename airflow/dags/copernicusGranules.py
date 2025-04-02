@@ -1,19 +1,13 @@
-"""
-Example Airflow DAG to demonstrate calling download_granule.py with backfill enabled.
-"""
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from airflow.exceptions import AirflowSkipException
+from airflow.exceptions import AirflowSkipException, AirflowFailException
 
-# Import the updated function from our package
-from copernicus_to_erddap.download_granule import download_granule
-from openeo.rest import OpenEoApiError  # Import the specific exception
 
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
-    'start_date': datetime(2005, 1, 1),  # Start in 2005
+    'start_date': datetime(2022, 5, 1),
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 1,
@@ -23,43 +17,49 @@ default_args = {
 dag = DAG(
     'copernicus_granule_download',
     default_args=default_args,
-    description='Download Sentinel-2 granule monthly starting from 2005 with backfill enabled',
-    schedule_interval='@monthly',  # Runs once a month
-    catchup=True,                  # Enable backfilling since 2005
-    max_active_runs=1,             # Process backfilled runs sequentially
+    description='Download granule monthly',
+    schedule_interval='@monthly',
+    catchup=True,
+    max_active_runs=1,
     tags=['backfill']
 )
 
-def dl_granule(ds, **kwargs):
-    """
-    Task to download the Sentinel-2 granule for a specific month.
-    If no data is available (as indicated by an OpenEoApiError),
-    skip the task.
-    
-    Parameters:
-        ds (str): The execution date as a string (format 'YYYY-MM-DD').
-    """
-    formatted_date = ds  # 'ds' is already in 'YYYY-MM-DD' format
-    
-    try:
-        # Log the date for debugging purposes
-        print(f"Processing granule download for date: {formatted_date}")
-        # Call our function with the date
-        output_file = download_granule(formatted_date)
-    except OpenEoApiError as e:
-        # Only skip if the error message indicates that no data is available
-        if "NoDataAvailable" in str(e):
-            raise AirflowSkipException(
-                f"Skipping download for {formatted_date}: {e}"
-            )
-        else:
-            raise
-    
-    return f"Successfully downloaded granule to {output_file}"
 
+def dl_granule(**kwargs):
+    formatted_date = kwargs['ds']
+    target_date = datetime.strptime(formatted_date, "%Y-%m-%d")
+    month_subset_str = target_date.strftime("*%Y%m*")
+
+    print(f"Processing granule download for date: {formatted_date}")
+
+    import copernicusmarine
+    from pprint import pprint
+
+    get_result_monthly = copernicusmarine.get(
+        dataset_id=kwargs['collection_name'],
+        filter=month_subset_str,
+        no_directories=True,
+        output_directory="/srv/pgs/copernicus"
+    )
+
+    pprint(f"List of saved files: {get_result_monthly}")
+
+    # Fail task if authentication issue arises
+    if "Copernicus Marine username" in str(get_result_monthly):
+        raise AirflowFailException("Authentication error: Copernicus Marine credentials required.")
+
+    # Skip task if no data to download based on returned message
+    if hasattr(get_result_monthly, 'status') and get_result_monthly.status == '003':
+        raise AirflowSkipException("No data to download, skipping task.")
+
+
+# PythonOperator definition
 download_task = PythonOperator(
     task_id='download_monthly_granule',
     python_callable=dl_granule,
-    op_kwargs={'ds': '{{ ds }}'},  # Pass the execution date explicitly via templating
+    op_kwargs={
+        'ds': '{{ ds }}',
+        'collection_name': 'cmems_mod_glo_phy-so_anfc_0.083deg_P1M-m'
+    },
     dag=dag,
 )
