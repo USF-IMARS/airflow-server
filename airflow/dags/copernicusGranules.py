@@ -6,14 +6,14 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.exceptions import AirflowSkipException
 
-# Import the function from our script
+# Import the updated function from our script
 from copernicus_to_erddap.download_granule import download_granule
 from openeo.rest import OpenEoApiError  # Import the specific exception
 
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
-    'start_date': datetime(2025, 3, 21),
+    'start_date': datetime(2005, 1, 1),  # Starting in 2005
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 1,
@@ -23,27 +23,27 @@ default_args = {
 dag = DAG(
     'copernicus_granule_download',
     default_args=default_args,
-    description='Download Sentinel-2 granule daily',
-    schedule_interval=timedelta(days=1),
-    catchup=False,
+    description='Download Sentinel-2 granule monthly starting from 2005',
+    schedule_interval='@monthly',  # Runs once a month
+    catchup=True,                  # Enable backfilling since 2005
 )
 
-def dl_granule(**kwargs):
+def dl_granule(ds, **kwargs):
     """
-    Task to download Sentinel-2 granule for a specific date.
-    If no data is available (as indicated by an OpenEoApiError), skip the task.
-    """
-    # Get execution date from Airflow context
-    execution_date = kwargs.get('execution_date')
+    Task to download the Sentinel-2 granule for a specific month.
+    If no data is available (as indicated by an OpenEoApiError),
+    skip the task.
     
-    # Format date for our function
-    formatted_date = execution_date.strftime('%Y-%m-%d')
+    Parameters:
+        ds (str): The execution date as a string (format 'YYYY-MM-DD').
+    """
+    formatted_date = ds  # 'ds' is already in 'YYYY-MM-DD' format
     
     try:
         # Call our function with the date
-        output_file = download_granule('/srv/pgs/copernicus_to_erddap', formatted_date)
+        output_file = download_granule(formatted_date)
     except OpenEoApiError as e:
-        # Check if the error message indicates that no data is available
+        # Only skip if the error message indicates that no data is available
         if "NoDataAvailable" in str(e):
             raise AirflowSkipException(
                 f"Skipping download for {formatted_date}: {e}"
@@ -53,16 +53,12 @@ def dl_granule(**kwargs):
     
     return f"Successfully downloaded granule to {output_file}"
 
-# Create task
 download_task = PythonOperator(
-    task_id='download_daily_granule',
+    task_id='download_monthly_granule',
     python_callable=dl_granule,
-    provide_context=True,
+    op_kwargs={'ds': '{{ ds }}'},  # Pass the execution date explicitly
     dag=dag,
 )
-
-# You can add more tasks here that depend on the downloaded file
-# For example, processing or notification tasks
 
 if __name__ == "__main__":
     dag.cli()
