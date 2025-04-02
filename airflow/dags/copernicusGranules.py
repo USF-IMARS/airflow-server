@@ -1,19 +1,19 @@
 """
-Example Airflow DAG to demonstrate calling download_granule.py
+Example Airflow DAG to demonstrate calling download_granule.py with backfill enabled.
 """
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.exceptions import AirflowSkipException
 
-# Import the updated function from our script
+# Import the updated function from our package
 from copernicus_to_erddap.download_granule import download_granule
 from openeo.rest import OpenEoApiError  # Import the specific exception
 
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
-    'start_date': datetime(2005, 1, 1),  # Starting in 2005
+    'start_date': datetime(2005, 1, 1),  # Start in 2005
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 1,
@@ -23,9 +23,11 @@ default_args = {
 dag = DAG(
     'copernicus_granule_download',
     default_args=default_args,
-    description='Download Sentinel-2 granule monthly starting from 2005',
+    description='Download Sentinel-2 granule monthly starting from 2005 with backfill enabled',
     schedule_interval='@monthly',  # Runs once a month
     catchup=True,                  # Enable backfilling since 2005
+    max_active_runs=1,             # Process backfilled runs sequentially
+    tags=['backfill']
 )
 
 def dl_granule(ds, **kwargs):
@@ -40,6 +42,8 @@ def dl_granule(ds, **kwargs):
     formatted_date = ds  # 'ds' is already in 'YYYY-MM-DD' format
     
     try:
+        # Log the date for debugging purposes
+        print(f"Processing granule download for date: {formatted_date}")
         # Call our function with the date
         output_file = download_granule(formatted_date)
     except OpenEoApiError as e:
@@ -56,9 +60,6 @@ def dl_granule(ds, **kwargs):
 download_task = PythonOperator(
     task_id='download_monthly_granule',
     python_callable=dl_granule,
-    op_kwargs={'ds': '{{ ds }}'},  # Pass the execution date explicitly
+    op_kwargs={'ds': '{{ ds }}'},  # Pass the execution date explicitly via templating
     dag=dag,
 )
-
-if __name__ == "__main__":
-    dag.cli()
