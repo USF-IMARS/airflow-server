@@ -2,6 +2,10 @@ from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.exceptions import AirflowSkipException, AirflowFailException
+import glob
+import os
+import copernicusmarine
+from pprint import pprint
 '''
 How to add a dataset:
 1. add PythonOperator below
@@ -43,8 +47,12 @@ def dl_granule(**kwargs):
 
     print(f"Processing granule download for date: {formatted_date}")
 
-    import copernicusmarine
-    from pprint import pprint
+    # Check for files in save_dir that match the pattern
+    search_pattern = os.path.join(kwargs['save_dir'], month_subset_str)
+    existing_files = glob.glob(search_pattern)
+    if existing_files:
+        print(f"File(s) {existing_files} already exist. Skipping download.")
+        raise AirflowSkipException("File already exists, skipping task.")
 
     get_result_monthly = copernicusmarine.get(
         dataset_id=kwargs['collection_name'],
@@ -86,3 +94,116 @@ windTask = PythonOperator(
     },
     dag=dag,
 )
+
+verticalCurrentsTask = PythonOperator(
+    task_id='vertical_currents_cmems_phy',
+    python_callable=dl_granule,
+    op_kwargs={
+        'ds': '{{ ds }}',
+        'collection_name': 'cmems_mod_glo_phy-wcur_anfc_0.083deg_P1M-m',
+        'save_dir': '/srv/pgs/copernicus/vertical_currents'
+    },
+    dag=dag,
+)
+
+oceanCarbonMYTask = PythonOperator(
+    task_id='ocean_carbon_cmems_my',
+    python_callable=dl_granule,
+    op_kwargs={
+        'ds': '{{ ds }}',
+        'collection_name': 'cmems_obs-mob_glo_bgc-car_my_irr-i',
+        'save_dir': '/srv/pgs/copernicus/ocean_carbon_my'
+    },
+    dag=dag,
+)
+
+oceanCarbonNRTTask = PythonOperator(
+    task_id='ocean_carbon_cmems_nrt',
+    python_callable=dl_granule,
+    op_kwargs={
+        'ds': '{{ ds }}',
+        'collection_name': 'cmems_obs-mob_glo_bgc-car_nrt_irr-i',
+        'save_dir': '/srv/pgs/copernicus/ocean_carbon_NRT'
+    },
+    dag=dag,
+)
+
+biogeoCarbonTask = PythonOperator(
+    task_id='biogeochem_carbon',
+    python_callable=dl_granule,
+    op_kwargs={
+        'ds': '{{ ds }}',
+        'collection_name': 'cmems_mod_glo_bgc-car_anfc_0.25deg_P1M-m',
+        'save_dir': '/srv/pgs/copernicus/biogeochem_carbon'
+    },
+    dag=dag,
+)
+
+biogeoCO2Task = PythonOperator(
+    task_id='biogeochem_co2',
+    python_callable=dl_granule,
+    op_kwargs={
+        'ds': '{{ ds }}',
+        'collection_name': 'cmems_mod_glo_bgc-co2_anfc_0.25deg_P1M-m',
+        'save_dir': '/srv/pgs/copernicus/biogeochem_co2'
+    },
+    dag=dag,
+)
+
+biogeoNutrientsTask = PythonOperator(
+    task_id='biogeochem_nutrients',
+    python_callable=dl_granule,
+    op_kwargs={
+        'ds': '{{ ds }}',
+        'collection_name': 'cmems_mod_glo_bgc-nut_anfc_0.25deg_P1M-m',
+        'save_dir': '/srv/pgs/copernicus/biogeochem_nutrients'
+    },
+    dag=dag,
+)
+
+biogeoOpticsTask = PythonOperator(
+    task_id='biogeochem_optics',
+    python_callable=dl_granule,
+    op_kwargs={
+        'ds': '{{ ds }}',
+        'collection_name': 'cmems_mod_glo_bgc-optics_anfc_0.25deg_P1M-m',
+        'save_dir': '/srv/pgs/copernicus/biogeochem_optics'
+    },
+    dag=dag,
+)
+
+biogeoPhytoTask = PythonOperator(
+    task_id='biogeochem_phyto',
+    python_callable=dl_granule,
+    op_kwargs={
+        'ds': '{{ ds }}',
+        'collection_name': 'cmems_mod_glo_bgc-pft_anfc_0.25deg_P1M-m',
+        'save_dir': '/srv/pgs/copernicus/biogeochem_phyto'
+    },
+    dag=dag,
+)
+
+biogeoPPTask = PythonOperator(
+    task_id='biogeochem_PP',
+    python_callable=dl_granule,
+    op_kwargs={
+        'ds': '{{ ds }}',
+        'collection_name': 'cmems_mod_glo_bgc-bio_anfc_0.25deg_P1M-m',
+        'save_dir': '/srv/pgs/copernicus/biogeochem_pp'
+    },
+    dag=dag,
+)
+
+biogeoZooTask = PythonOperator(
+    task_id='biogeochem_zoo',
+    python_callable=dl_granule,
+    op_kwargs={
+        'ds': '{{ ds }}',
+        'collection_name': 'cmems_mod_glo_bgc-plankton_anfc_0.25deg_P1M-m',
+        'save_dir': '/srv/pgs/copernicus/biogeochem_zoo'
+    },
+    dag=dag,
+)
+
+
+
