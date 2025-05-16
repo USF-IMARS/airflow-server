@@ -22,7 +22,7 @@ How to add a dataset:
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
-    'start_date': datetime(2020, 1, 1),
+    'start_date': datetime(2015, 1, 1),
     'email_on_failure': False,
     'email_on_retry': False,
     'retries': 1,
@@ -216,6 +216,13 @@ altimeterTask = PythonOperator(
     dag=dag,
 )
 
-
-
-
+seaSurfaceHeightTask = PythonOperator(
+    task_id='SSH',
+    python_callable=dl_granule,
+    op_kwargs={
+        'ds': '{{ ds }}',
+        'collection_name': 'cmems_obs-sl_glo_phy-ssh_my_allsat-l4-duacs-0.125deg_P1M-m',
+        'save_dir': '/srv/pgs/copernicus/seaSurfaceHeight'
+    },
+    dag=dag
+)
