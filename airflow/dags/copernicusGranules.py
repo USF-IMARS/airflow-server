@@ -205,5 +205,17 @@ biogeoZooTask = PythonOperator(
     dag=dag,
 )
 
+altimeterTask = PythonOperator(
+    task_id='altimeter',
+    python_callable=dl_granule,
+    op_kwargs={
+        'ds': '{{ ds }}',
+        'collection_name': 'cmems_mod_glo_phy_anfc_0.083deg_P1D-m',
+        'save_dir': '/srv/pgs/copernicus/altimetry'
+    },
+    dag=dag,
+)
+
+
 
 
